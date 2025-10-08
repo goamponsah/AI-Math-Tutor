@@ -1,0 +1,45 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  createdAt     DateTime       @default(now())
+  subscriptions Subscription[]
+  payments      Payment[]
+}
+
+model Subscription {
+  id               String   @id @default(cuid())
+  user             User     @relation(fields: [userId], references: [id])
+  userId           String
+  plan             String
+  status           String   // active | canceled | past_due
+  provider         String   // paystack
+  providerPlanCode String?
+  lastPaidAt       DateTime?
+  createdAt        DateTime @default(now())
+
+  @@unique([userId, plan], name: "userId_plan")
+}
+
+model Payment {
+  id              String   @id @default(cuid())
+  user            User     @relation(fields: [userId], references: [id])
+  userId          String
+  provider        String   // paystack
+  reference       String   @unique
+  amountMinor     Int?
+  currency        String?
+  status          String   // initialized | success | failed
+  rawInitResponse Json?
+  rawWebhookEvent Json?
+  createdAt       DateTime @default(now())
+}
