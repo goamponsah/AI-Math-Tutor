@@ -43,3 +43,4 @@ model Payment {
   rawWebhookEvent Json?
   createdAt       DateTime @default(now())
 }
+
