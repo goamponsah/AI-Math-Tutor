@@ -1,6 +1,7 @@
 {
   "name": "math-gpt",
   "version": "1.0.0",
+  "description": "Math GPT — AI-powered math problem solver with Paystack subscription and GPT-4 integration.",
   "type": "module",
   "main": "server.js",
   "scripts": {
@@ -15,9 +16,27 @@
     "body-parser": "^1.20.3",
     "cors": "^2.8.5",
     "crypto": "^1.0.1",
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "openai": "^4.56.0"
   },
   "devDependencies": {
     "prisma": "^5.18.0"
-  }
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "math",
+    "gpt",
+    "openai",
+    "express",
+    "prisma",
+    "paystack",
+    "railway",
+    "subscription",
+    "ai",
+    "education"
+  ],
+  "author": "Math GPT Team",
+  "license": "MIT"
 }
