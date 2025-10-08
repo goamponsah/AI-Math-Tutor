@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Math GPT — Your 24/7 AI Math Tutor</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Solve any math problem with full step-by-step explanations. Free trial. Upgrade for unlimited." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --bg:#0e0f13; --panel:#141720; --text:#e9edf5; --muted:#9aa3b2; --brand:#5b8cff; --accent:#00d68f; --border:#232635;
+      --radius:16px; --maxw:1100px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:linear-gradient(180deg,#0b0c10 0%,#0f1118 100%);color:var(--text);font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif}
+    a{color:inherit;text-decoration:none}
+    .container{max-width:var(--maxw);margin:0 auto;padding:24px}
+    .nav{display:flex;align-items:center;justify-content:space-between;padding:12px 0}
+    .brand{display:flex;gap:10px;align-items:center;font-weight:800;font-size:18px}
+    .badge{font-size:12px;color:#cce7ff;background:#0f1b33;border:1px solid #1f2a44;padding:2px 8px;border-radius:999px}
+    .hero{display:grid;grid-template-columns:1.1fr 1fr;gap:28px;align-items:center;padding:32px 0}
+    .hero .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
+    .h1{font-size:38px;line-height:1.1;margin:0 0 14px 0;font-weight:800}
+    .p{font-size:16px;color:var(--muted);margin:0 0 18px 0}
+    .cta{display:flex;gap:12px;flex-wrap:wrap}
+    .btn{background:var(--brand);color:#fff;border:none;border-radius:12px;padding:14px 18px;font-weight:700;cursor:pointer}
+    .btn.secondary{background:#1b2030;color:#cdd6f4;border:1px solid var(--border)}
+    .section{padding:26px 0}
+    .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+    .tile{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:18px}
+    .pricing{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+    .price{font-size:28px;font-weight:800}
+    .footer{opacity:.7;font-size:13px;padding:20px 0}
+    input,select{background:#0e1320;border:1px solid var(--border);color:var(--text);border-radius:12px;padding:12px;width:100%}
+    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media(max-width:980px){.hero{grid-template-columns:1fr}.grid,.pricing{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav class="nav">
+      <div class="brand">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M12 3l7.794 4.5v9L12 21 4.206 16.5v-9L12 3z" stroke="#5b8cff"/></svg>
+        Math GPT
+        <span class="badge">Paystack Verified</span>
+      </div>
+      <div class="cta">
+        <a href="/chat.html" class="btn secondary">Open Chat</a>
+      </div>
+    </nav>
+
+    <section class="hero">
+      <div>
+        <h1 class="h1">Struggling with Math? <br/>Meet your 24/7 AI Math Tutor.</h1>
+        <p class="p">Upload a photo or type a question. Get full step-by-step solutions for WAEC, IGCSE, SAT, and university math.</p>
+        <div class="cta">
+          <a href="/chat.html" class="btn">Try Free (3 problems/day)</a>
+          <a href="#pricing" class="btn secondary">See Pricing</a>
+        </div>
+
+        <div class="tile" style="margin-top:18px">
+          <form id="subscribe-form" autocomplete="on">
+            <div class="form-row">
+              <div><label>Email</label><input id="email" type="email" required placeholder="you@example.com" /></div>
+              <div><label>Plan</label>
+                <select id="plan" required>
+                  <option value="premium">Premium — ₵49/month</option>
+                  <option value="pro">Pro Tutor — ₵149/month</option>
+                </select>
+              </div>
+            </div>
+            <div style="margin-top:12px;display:flex;gap:10px">
+              <button type="submit" class="btn" id="subscribe-btn">Subscribe with Paystack</button>
+              <span class="p">Secure • Card • Mobile Money</span>
+            </div>
+          </form>
+          <div id="subscribe-status" class="p" style="margin-top:8px;"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <video src="" controls preload="metadata" style="width:100%;border-radius:12px;background:#000" poster="" >
+          Sorry, your browser doesn’t support embedded videos.
+        </video>
+        <div class="p" style="margin-top:8px">Watch Math GPT solve a real WAEC question in seconds — with full working.</div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>How it works</h2>
+      <div class="grid">
+        <div class="tile"><b>1) Upload or Type</b><br/><span class="p">Take a photo or paste the problem.</span></div>
+        <div class="tile"><b>2) Get Full Steps</b><br/><span class="p">Clear, teacher-level explanations.</span></div>
+        <div class="tile"><b>3) Master the Method</b><br/><span class="p">Build confidence and speed.</span></div>
+      </div>
+    </section>
+
+    <section id="pricing" class="section">
+      <h2>Pricing</h2>
+      <div class="pricing">
+        <div class="tile">
+          <h3>Starter</h3><div class="price">Free</div>
+          <ul class="p"><li>3 problems/day</li><li>Text & photo input</li><li>Basic steps</li></ul>
+        </div>
+        <div class="tile" style="border:2px solid var(--brand)">
+          <h3>Premium</h3><div class="price">₵49<span style="font-size:14px;font-weight:600">/month</span></div>
+          <ul class="p"><li>Unlimited problems</li><li>Full step-by-step</li><li>Exam prep templates</li></ul>
+        </div>
+        <div class="tile">
+          <h3>Pro Tutor</h3><div class="price">₵149<span style="font-size:14px;font-weight:600">/month</span></div>
+          <ul class="p"><li>Everything in Premium</li><li>PDF exports</li><li>Priority support</li></ul>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      © <span id="yr"></span> Math GPT • Payments by Paystack • <a href="/privacy.html">Privacy</a> • <a href="/terms.html">Terms</a>
+    </footer>
+  </div>
+
+  <script>
+    document.getElementById('yr').textContent = new Date().getFullYear();
+
+    const form = document.getElementById('subscribe-form');
+    const statusEl = document.getElementById('subscribe-status');
+    const btn = document.getElementById('subscribe-btn');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      statusEl.textContent = 'Creating secure payment session…';
+      btn.disabled = true;
+
+      try {
+        const email = document.getElementById('email').value.trim();
+        const plan = document.getElementById('plan').value;
+
+        const res = await fetch('/api/paystack/initialize', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ email, plan })
+        });
+
+        const json = await res.json();
+        if(!res.ok) throw new Error(json?.error || 'Failed to initialize payment');
+
+        // Prefer redirect to Paystack's hosted page (works for cards & MoMo)
+        window.location.href = json.authorization_url;
+      } catch (err) {
+        console.error(err);
+        statusEl.textContent = 'Payment init failed: ' + err.message;
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
