@@ -24,8 +24,8 @@ const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY || "";
 
 // ✅ These match your Railway variable names
 const PLAN_CODES = {
-  premium: process.env.PAYSTACK_PLAN_PREMIUM || "", // e.g. PLN_xxx
-  pro: process.env.PAYSTACK_PLAN_PRO || ""          // e.g. PLN_xxx
+  PAYSTACK_PLAN_PREMIUM: process.env.PAYSTACK_PLAN_PREMIUM || "", // e.g. PLN_xxx
+  PAYSTACK_PLAN_PRO: process.env.PAYSTACK_PLAN_PRO || ""          // e.g. PLN_xxx
 };
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
