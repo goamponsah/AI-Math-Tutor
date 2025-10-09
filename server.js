@@ -107,7 +107,7 @@ app.post("/api/paystack/initialize", async (req, res) => {
         error: "Paystack init failed",
         message: data?.message || "No message from Paystack",
         raw: data,
-};
+      }); // <-- fixed closing ) here
     }
 
     await prisma.payment.create({
