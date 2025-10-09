@@ -1,5 +1,6 @@
 // server.js
-// Complete app: Express + Prisma + Paystack (subs + webhook) + OpenAI (GPT-4) + diagnostics
+// Complete app: Express + Prisma + Paystack (plans, webhook, callback)
+// + OpenAI (GPT-4 chat w/ images) + diagnostics
 
 import express from "express";
 import cors from "cors";
@@ -32,8 +33,8 @@ const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4";
 
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
-// ---------- MIDDLEWARE ORDER MATTERS ----------
-// Raw body ONLY for webhook (for signature verification)
+// ---------- MIDDLEWARE (order matters) ----------
+// Use raw body only for webhook to verify signature
 app.use("/api/paystack/webhook", bodyParser.raw({ type: "*/*" }));
 
 app.use(cors());
@@ -89,7 +90,7 @@ app.post("/api/paystack/initialize", async (req, res) => {
 
     const payload = {
       email,
-      plan: planCode, // recurring via plan
+      plan: planCode,              // recurring via plan
       currency: "GHS",
       callback_url: `${PUBLIC_URL}/payment/callback`,
       metadata: { user_id: user?.id || null, plan, source: "math-gpt-landing" },
@@ -106,12 +107,12 @@ app.post("/api/paystack/initialize", async (req, res) => {
         error: "Paystack init failed",
         message: data?.message || "No message from Paystack",
         raw: data,
-      });
+};
     }
 
     await prisma.payment.create({
       data: {
-        userId: user?.id,
+        userId: user?.id || null,
         provider: "paystack",
         reference: data.data.reference,
         status: "initialized",
@@ -300,7 +301,7 @@ app.post("/api/chat", async (req, res) => {
     }
 
     const completion = await openai.chat.completions.create({
-      model: OPENAI_MODEL, // gpt-4
+      model: OPENAI_MODEL, // defaults to gpt-4 via env
       temperature: 0.2,
       messages: [
         { role: "system", content: systemPromptFor(assistant) },
@@ -316,10 +317,33 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
+// ---------- Callback page (user redirect after Paystack checkout) ----------
+app.get("/payment/callback", (_req, res) => {
+  // Display a simple confirmation; the webhook is the source of truth.
+  res.send(`<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Payment callback</title>
+<style>
+  body{margin:0;background:linear-gradient(180deg,#0b0c10 0%,#0f1118 100%);color:#e9edf5;
+       font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh}
+  .card{background:#141720;border:1px solid #232635;border-radius:16px;padding:28px;max-width:520px;text-align:center}
+  .btn{display:inline-block;margin-top:14px;background:#5b8cff;color:#fff;border:none;border-radius:12px;padding:12px 16px;font-weight:700;text-decoration:none}
+  .muted{color:#9aa3b2}
+</style></head>
+<body>
+  <div class="card">
+    <h2>Payment received</h2>
+    <p class="muted">Thanks! If this was successful, your subscription will activate shortly.</p>
+    <a class="btn" href="/chat.html">Go to Chat</a>
+    <p class="muted" style="margin-top:10px">If your access hasn't updated yet, wait a few seconds and refresh — activation is handled by the webhook.</p>
+  </div>
+</body></html>`);
+});
+
 // ---------- Health & Fallback ----------
 app.get("/healthz", (_req, res) => res.json({ ok: true }));
 
-// Single Page App fallback (serves index.html for unknown routes)
+// SPA fallback: serve index for unknown routes
 app.get("*", (_req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
