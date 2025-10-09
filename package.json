@@ -1,14 +1,15 @@
 {
   "name": "math-gpt",
   "version": "1.0.0",
-  "description": "Math GPT — AI-powered math problem solver with Paystack subscription and GPT-4 integration.",
+  "description": "Math GPT — AI math tutor with GPT-4, Paystack subscriptions, and step-by-step explanations.",
   "type": "module",
   "main": "server.js",
   "scripts": {
     "dev": "node --watch server.js",
-    "start": "node server.js",
+    "start": "prisma migrate deploy && node server.js",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate deploy"
+    "prisma:migrate": "prisma migrate deploy",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@prisma/client": "^5.18.0",
@@ -33,9 +34,9 @@
     "prisma",
     "paystack",
     "railway",
-    "subscription",
     "ai",
-    "education"
+    "education",
+    "subscription"
   ],
   "author": "Math GPT Team",
   "license": "MIT"
