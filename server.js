@@ -1,6 +1,5 @@
 // server.js
-// Complete app: Express + Prisma + Paystack (plans, webhook, callback)
-// + OpenAI (GPT-4 chat w/ images) + diagnostics
+// Express + Prisma + Paystack (plans, webhook, callback) + OpenAI (GPT-4) + diagnostics
 
 import express from "express";
 import cors from "cors";
@@ -34,20 +33,26 @@ const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4";
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
 // ---------- MIDDLEWARE (order matters) ----------
-// Use raw body only for webhook to verify signature
+// Raw body for webhook signature verification
 app.use("/api/paystack/webhook", bodyParser.raw({ type: "*/*" }));
 
 app.use(cors());
 app.use(express.json({ limit: "15mb" }));
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, "public"))); // serves /public (index.html, chat.html, etc.)
+app.use(express.static(path.join(__dirname, "public"))); // serves /public/* (index.html, chat.html, etc.)
 
 // ---------- HELPERS ----------
 async function createOrGetUser(email) {
   if (!email) return null;
-  let u = await prisma.user.findUnique({ where: { email } });
-  if (!u) u = await prisma.user.create({ data: { email } });
-  return u;
+  try {
+    let u = await prisma.user.findUnique({ where: { email } });
+    if (!u) u = await prisma.user.create({ data: { email } });
+    return u;
+  } catch (e) {
+    // Don’t block the flow if DB isn’t ready yet
+    console.warn("DB not ready, skipping user persistence:", e.code || e.message);
+    return null;
+  }
 }
 
 function systemPromptFor(assistant = "Math GPT") {
@@ -56,7 +61,7 @@ Explain the reasoning simply, show workings line by line, and present the final 
 Avoid big section headers; keep formatting compact and readable.`;
 }
 
-// ---------- DIAGNOSTICS (no secrets exposed) ----------
+// ---------- DIAGNOSTICS ----------
 app.get("/api/paystack/diag", (_req, res) => {
   res.json({
     has_SECRET_KEY: Boolean(PAYSTACK_SECRET_KEY),
@@ -72,25 +77,19 @@ app.get("/api/paystack/diag", (_req, res) => {
 app.post("/api/paystack/initialize", async (req, res) => {
   try {
     const { email, plan } = req.body || {};
-    if (!email || !plan) {
-      return res.status(400).json({ error: "email and plan required" });
-    }
-    if (!PAYSTACK_SECRET_KEY) {
-      return res.status(500).json({ error: "PAYSTACK_SECRET_KEY missing" });
-    }
+    if (!email || !plan) return res.status(400).json({ error: "email and plan required" });
+    if (!PAYSTACK_SECRET_KEY) return res.status(500).json({ error: "PAYSTACK_SECRET_KEY missing" });
 
     const planCode = PLAN_CODES[plan];
     if (!planCode) {
-      return res
-        .status(400)
-        .json({ error: `Unknown plan '${plan}'. Check PAYSTACK_PLAN_${plan.toUpperCase()}.` });
+      return res.status(400).json({ error: `Unknown plan '${plan}'. Check PAYSTACK_PLAN_${plan.toUpperCase()}.` });
     }
 
     const user = await createOrGetUser(email);
 
     const payload = {
       email,
-      plan: planCode,              // recurring via plan
+      plan: planCode,            // recurring via plan
       currency: "GHS",
       callback_url: `${PUBLIC_URL}/payment/callback`,
       metadata: { user_id: user?.id || null, plan, source: "math-gpt-landing" },
@@ -107,19 +106,24 @@ app.post("/api/paystack/initialize", async (req, res) => {
         error: "Paystack init failed",
         message: data?.message || "No message from Paystack",
         raw: data,
-      }); // <-- fixed closing ) here
+      });
     }
 
-    await prisma.payment.create({
-      data: {
-        userId: user?.id || null,
-        provider: "paystack",
-        reference: data.data.reference,
-        status: "initialized",
-        currency: "GHS",
-        rawInitResponse: data.data,
-      },
-    });
+    // Store init (best-effort)
+    try {
+      await prisma.payment.create({
+        data: {
+          userId: user?.id || null,
+          provider: "paystack",
+          reference: data.data.reference,
+          status: "initialized",
+          currency: "GHS",
+          rawInitResponse: data.data,
+        },
+      });
+    } catch (e) {
+      console.warn("Skipping payment init persistence (DB not ready):", e.code || e.message);
+    }
 
     return res.json({
       authorization_url: data.data.authorization_url,
@@ -182,9 +186,7 @@ app.post("/api/paystack/initialize-once", async (req, res) => {
 app.post("/api/paystack/webhook", async (req, res) => {
   const signature = req.headers["x-paystack-signature"];
   const computed = crypto.createHmac("sha512", PAYSTACK_SECRET_KEY || "").update(req.body).digest("hex");
-  if (signature !== computed) {
-    return res.sendStatus(401);
-  }
+  if (signature !== computed) return res.sendStatus(401);
 
   try {
     const event = JSON.parse(req.body.toString("utf8"));
@@ -203,53 +205,69 @@ app.post("/api/paystack/webhook", async (req, res) => {
         planCode === PLAN_CODES.pro ? "pro" :
         "unknown";
 
-      // Upsert payment
-      await prisma.payment.upsert({
-        where: { reference: reference || "" },
-        update: { status: "success", amountMinor: amount ?? undefined, currency, rawWebhookEvent: event },
-        create: {
-          userId: user?.id || null,
-          provider: "paystack",
-          reference: reference || `ref_${Date.now()}`,
-          amountMinor: amount ?? null,
-          currency,
-          status: "success",
-          rawWebhookEvent: event,
-        },
-      });
-
-      // Activate subscription (if plan recognized)
-      if (planKey !== "unknown") {
-        await prisma.subscription.upsert({
-          where: { userId_plan: { userId: user?.id || "", plan: planKey } },
-          update: { status: "active", providerPlanCode: planCode, lastPaidAt: new Date() },
+      // Upsert payment (best-effort)
+      try {
+        await prisma.payment.upsert({
+          where: { reference: reference || "" },
+          update: { status: "success", amountMinor: amount ?? undefined, currency, rawWebhookEvent: event },
           create: {
-            userId: user?.id || "",
-            plan: planKey,
-            status: "active",
+            userId: user?.id || null,
             provider: "paystack",
-            providerPlanCode: planCode || null,
-            lastPaidAt: new Date(),
+            reference: reference || `ref_${Date.now()}`,
+            amountMinor: amount ?? null,
+            currency,
+            status: "success",
+            rawWebhookEvent: event,
           },
         });
+      } catch (e) {
+        console.warn("Skipping payment upsert (DB not ready):", e.code || e.message);
+      }
+
+      // Activate subscription (best-effort)
+      if (planKey !== "unknown" && user?.id) {
+        try {
+          await prisma.subscription.upsert({
+            where: { userId_plan: { userId: user.id, plan: planKey } },
+            update: { status: "active", providerPlanCode: planCode, lastPaidAt: new Date() },
+            create: {
+              userId: user.id,
+              plan: planKey,
+              status: "active",
+              provider: "paystack",
+              providerPlanCode: planCode || null,
+              lastPaidAt: new Date(),
+            },
+          });
+        } catch (e) {
+          console.warn("Skipping subscription upsert (DB not ready):", e.code || e.message);
+        }
       }
     }
 
     if (evt === "invoice.payment_failed" || evt === "charge.failed") {
       if (reference) {
-        await prisma.payment.updateMany({ where: { reference }, data: { status: "failed" } });
+        try {
+          await prisma.payment.updateMany({ where: { reference }, data: { status: "failed" } });
+        } catch (e) {
+          console.warn("Skipping mark failed (DB not ready):", e.code || e.message);
+        }
       }
     }
 
     if (evt === "subscription.disable" && email && planCode) {
-      const user = await prisma.user.findUnique({ where: { email } });
+      const user = await prisma.user.findUnique({ where: { email } }).catch(() => null);
       if (user) {
         const planKey = planCode === PLAN_CODES.premium ? "premium" : planCode === PLAN_CODES.pro ? "pro" : null;
         if (planKey) {
-          await prisma.subscription.updateMany({
-            where: { userId: user.id, plan: planKey },
-            data: { status: "canceled" },
-          });
+          try {
+            await prisma.subscription.updateMany({
+              where: { userId: user.id, plan: planKey },
+              data: { status: "canceled" },
+            });
+          } catch (e) {
+            console.warn("Skipping subscription cancel (DB not ready):", e.code || e.message);
+          }
         }
       }
     }
@@ -272,16 +290,14 @@ app.get("/api/subscription/status/:email", async (req, res) => {
       include: { subscriptions: true },
     });
 
-    if (!user) return res.json({ status: "none" });
-
+    if (!user) return res.json({ status: "free" });
     const activeSub = user.subscriptions.find((s) => s.status === "active");
-    if (activeSub) {
-      return res.json({ status: "active", plan: activeSub.plan, since: activeSub.lastPaidAt });
-    }
+    if (activeSub) return res.json({ status: "active", plan: activeSub.plan, since: activeSub.lastPaidAt });
     return res.json({ status: "free" });
   } catch (err) {
-    console.error("Status error:", err);
-    res.status(500).json({ error: "Failed to check subscription status" });
+    // If tables don't exist yet, default to free
+    console.warn("Status check fallback (DB not ready):", err.code || err.message);
+    return res.json({ status: "free" });
   }
 });
 
@@ -295,13 +311,10 @@ app.post("/api/chat", async (req, res) => {
 
     const userContent = [];
     if (message && message.trim()) userContent.push({ type: "text", text: message.trim() });
-    if (image && typeof image === "string") {
-      // Accept data URLs or remote URLs
-      userContent.push({ type: "image_url", image_url: image });
-    }
+    if (image && typeof image === "string") userContent.push({ type: "image_url", image_url: image });
 
     const completion = await openai.chat.completions.create({
-      model: OPENAI_MODEL, // defaults to gpt-4 via env
+      model: OPENAI_MODEL, // gpt-4 (vision-capable models can also take image_url)
       temperature: 0.2,
       messages: [
         { role: "system", content: systemPromptFor(assistant) },
@@ -319,7 +332,7 @@ app.post("/api/chat", async (req, res) => {
 
 // ---------- Callback page (user redirect after Paystack checkout) ----------
 app.get("/payment/callback", (_req, res) => {
-  // Display a simple confirmation; the webhook is the source of truth.
+  // Display a simple confirmation; webhook remains source of truth.
   res.send(`<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Payment callback</title>
@@ -335,7 +348,7 @@ app.get("/payment/callback", (_req, res) => {
     <h2>Payment received</h2>
     <p class="muted">Thanks! If this was successful, your subscription will activate shortly.</p>
     <a class="btn" href="/chat.html">Go to Chat</a>
-    <p class="muted" style="margin-top:10px">If your access hasn't updated yet, wait a few seconds and refresh — activation is handled by the webhook.</p>
+    <p class="muted" style="margin-top:10px">If your access hasn't updated yet, refresh in a few seconds — activation is handled by the webhook.</p>
   </div>
 </body></html>`);
 });
