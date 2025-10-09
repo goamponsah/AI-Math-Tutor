@@ -70,8 +70,8 @@ app.get("/api/paystack/diag", (_req, res) => {
   res.json({
     has_SECRET_KEY: Boolean(PAYSTACK_SECRET_KEY),
     PUBLIC_URL,
-    premiumPlanSet: Boolean(PLAN_CODES.premium),
-    proPlanSet: Boolean(PLAN_CODES.pro)
+    premiumPlanSet: Boolean(PLAN_CODES.PAYSTACK_PLAN_PREMIUM),
+    proPlanSet: Boolean(PLAN_CODES.PAYSTACK_PLAN_PRO)
   });
 });
 
