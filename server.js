@@ -172,8 +172,8 @@ app.post("/api/paystack/webhook", async (req, res) => {
     if (evt === "charge.success" && email) {
       const user = await createOrGetUser(email);
       const planKey =
-        planCode === PLAN_CODES.premium ? "premium" :
-        planCode === PLAN_CODES.pro ? "pro" : "unknown";
+        planCode === PLAN_CODES.PAYSTACK_PLAN_PREMIUM ? "premium" :
+        planCode === PLAN_CODES.PAYSTACK_PLAN_PRO ? "pro" : "unknown";
 
       try {
         await prisma.payment.upsert({
