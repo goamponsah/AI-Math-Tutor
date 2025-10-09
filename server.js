@@ -16,7 +16,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // ---------- ENV ----------
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 const PUBLIC_URL = process.env.PUBLIC_URL || `http://localhost:${PORT}`;
 
 // ✅ These are your Paystack environment variables
