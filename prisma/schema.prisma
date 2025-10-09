@@ -1,4 +1,5 @@
 // prisma/schema.prisma
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,7 +9,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-/* ---------- Enums (avoid string typos) ---------- */
+// ---------- Enums (avoid string typos)
 enum Plan {
   premium
   pro
@@ -23,8 +24,7 @@ enum Provider {
   paystack
 }
 
-/* ---------- Models ---------- */
-
+// ---------- Models
 model User {
   id            String         @id @default(cuid())
   email         String         @unique
@@ -47,7 +47,6 @@ model Subscription {
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
 
-  // used by server: upsert via { userId, plan }
   @@unique([userId, plan], name: "userId_plan")
   @@index([userId, status])
 }
@@ -57,10 +56,10 @@ model Payment {
   userId          String?
   user            User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
   provider        Provider
-  reference       String    @unique     // Paystack reference
+  reference       String    @unique
   amountMinor     Int?
-  currency        String?                 // e.g., "GHS"
-  status          String                  // "initialized" | "success" | "failed"
+  currency        String?               // e.g., "GHS"
+  status          String                // "initialized" | "success" | "failed"
   createdAt       DateTime  @default(now())
   rawInitResponse Json?
   rawWebhookEvent Json?
