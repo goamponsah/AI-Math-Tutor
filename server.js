@@ -1,4 +1,4 @@
-// server.js — Math GPT with Paystack subscriptions and GPT-4 chat
+// server.js — Math GPT with GPT-4 chat + Paystack subscriptions
 import express from "express";
 import cors from "cors";
 import axios from "axios";
@@ -19,19 +19,21 @@ const __dirname = path.dirname(__filename);
 const PORT = process.env.PORT || 3000;
 const PUBLIC_URL = process.env.PUBLIC_URL || `http://localhost:${PORT}`;
 
+// ✅ These are your Paystack environment variables
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY || "";
+
+// ✅ These match your Railway variable names
 const PLAN_CODES = {
-  premium: process.env.PAYSTACK_PLAN_PREMIUM || "",
-  pro: process.env.PAYSTACK_PLAN_PRO || "",
+  premium: process.env.PAYSTACK_PLAN_PREMIUM || "", // e.g. PLN_xxx
+  pro: process.env.PAYSTACK_PLAN_PRO || ""          // e.g. PLN_xxx
 };
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4";
-
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
 // ---------- MIDDLEWARE ----------
-app.use("/api/paystack/webhook", bodyParser.raw({ type: "*/*" })); // keep raw for signature check
+app.use("/api/paystack/webhook", bodyParser.raw({ type: "*/*" }));
 app.use(cors());
 app.use(express.json({ limit: "15mb" }));
 app.use(express.urlencoded({ extended: true }));
@@ -52,11 +54,9 @@ async function createOrGetUser(email) {
 
 function systemPromptFor(assistant = "Math GPT") {
   return `You are a clear, step-by-step math tutor.
-Explain your reasoning simply, show calculations neatly, and give the final answer clearly.
-Avoid large section headers; keep formatting concise and readable.`;
+Explain reasoning simply, show calculations neatly, and give the final answer clearly.`;
 }
 
-// Fetch plan info for debugging or validation
 async function fetchPlanDetails(planCode) {
   const { data } = await axios.get(
     `https://api.paystack.co/plan/${encodeURIComponent(planCode)}`,
@@ -71,11 +71,10 @@ app.get("/api/paystack/diag", (_req, res) => {
     has_SECRET_KEY: Boolean(PAYSTACK_SECRET_KEY),
     PUBLIC_URL,
     premiumPlanSet: Boolean(PLAN_CODES.premium),
-    proPlanSet: Boolean(PLAN_CODES.pro),
+    proPlanSet: Boolean(PLAN_CODES.pro)
   });
 });
 
-// ---------- Plan inspection route ----------
 app.get("/api/paystack/plan/:planKey", async (req, res) => {
   try {
     const planKey = req.params.planKey;
@@ -88,7 +87,7 @@ app.get("/api/paystack/plan/:planKey", async (req, res) => {
   }
 });
 
-// ---------- PAYSTACK: Initialize subscription ----------
+// ---------- PAYSTACK INITIALIZE ----------
 app.post("/api/paystack/initialize", async (req, res) => {
   try {
     const { email, plan } = req.body || {};
@@ -98,7 +97,7 @@ app.post("/api/paystack/initialize", async (req, res) => {
     const planCode = PLAN_CODES[plan];
     if (!planCode) return res.status(400).json({ error: `Unknown plan '${plan}'` });
 
-    // Validate plan details
+    // Validate plan details first
     const planInfo = await fetchPlanDetails(planCode);
     const p = planInfo?.data;
     if (!p?.amount || p.amount <= 0)
@@ -107,12 +106,13 @@ app.post("/api/paystack/initialize", async (req, res) => {
       return res.status(400).json({ error: `Plan currency must be GHS, found ${p.currency}` });
 
     const user = await createOrGetUser(email);
+
     const payload = {
       email,
       plan: planCode,
       currency: "GHS",
       callback_url: `${PUBLIC_URL}/payment/callback`,
-      metadata: { user_id: user?.id || null, plan },
+      metadata: { user_id: user?.id || null, plan }
     };
 
     const { data } = await axios.post(
@@ -132,8 +132,8 @@ app.post("/api/paystack/initialize", async (req, res) => {
           reference: data.data.reference,
           status: "initialized",
           currency: "GHS",
-          rawInitResponse: data.data,
-        },
+          rawInitResponse: data.data
+        }
       });
     } catch (e) {
       console.warn("Skipping payment init persistence:", e.code || e.message);
@@ -141,7 +141,7 @@ app.post("/api/paystack/initialize", async (req, res) => {
 
     res.json({
       authorization_url: data.data.authorization_url,
-      reference: data.data.reference,
+      reference: data.data.reference
     });
   } catch (err) {
     const msg = err?.response?.data?.message || err?.message || "Unknown error";
@@ -150,7 +150,7 @@ app.post("/api/paystack/initialize", async (req, res) => {
   }
 });
 
-// ---------- PAYSTACK: Webhook ----------
+// ---------- PAYSTACK WEBHOOK ----------
 app.post("/api/paystack/webhook", async (req, res) => {
   const signature = req.headers["x-paystack-signature"];
   const computed = crypto
@@ -178,16 +178,16 @@ app.post("/api/paystack/webhook", async (req, res) => {
       try {
         await prisma.payment.upsert({
           where: { reference: reference || "" },
-          update: { status: "success", amountMinor: amount ?? undefined, currency, rawWebhookEvent: event },
+          update: { status: "success", amountMinor: amount, currency, rawWebhookEvent: event },
           create: {
             userId: user?.id || null,
             provider: "paystack",
             reference: reference || `ref_${Date.now()}`,
-            amountMinor: amount ?? null,
+            amountMinor: amount,
             currency,
             status: "success",
-            rawWebhookEvent: event,
-          },
+            rawWebhookEvent: event
+          }
         });
       } catch (e) {
         console.warn("Skipping payment upsert:", e.code || e.message);
@@ -204,8 +204,8 @@ app.post("/api/paystack/webhook", async (req, res) => {
               status: "active",
               provider: "paystack",
               providerPlanCode: planCode,
-              lastPaidAt: new Date(),
-            },
+              lastPaidAt: new Date()
+            }
           });
         } catch (e) {
           console.warn("Skipping subscription upsert:", e.code || e.message);
@@ -220,7 +220,7 @@ app.post("/api/paystack/webhook", async (req, res) => {
   }
 });
 
-// ---------- Subscription status ----------
+// ---------- SUBSCRIPTION STATUS ----------
 app.get("/api/subscription/status/:email", async (req, res) => {
   try {
     const { email } = req.params;
@@ -228,7 +228,7 @@ app.get("/api/subscription/status/:email", async (req, res) => {
 
     const user = await prisma.user.findUnique({
       where: { email },
-      include: { subscriptions: true },
+      include: { subscriptions: true }
     });
 
     if (!user) return res.json({ status: "free" });
@@ -242,12 +242,11 @@ app.get("/api/subscription/status/:email", async (req, res) => {
   }
 });
 
-// ---------- GPT-4 Chat ----------
+// ---------- GPT-4 CHAT ----------
 app.post("/api/chat", async (req, res) => {
   try {
     const { email, assistant = "Math GPT", message = "", image = null } = req.body || {};
     if (!message && !image) return res.status(400).json({ error: "message or image required" });
-
     if (email) await createOrGetUser(email).catch(() => {});
 
     const userContent = [];
@@ -259,8 +258,8 @@ app.post("/api/chat", async (req, res) => {
       temperature: 0.2,
       messages: [
         { role: "system", content: systemPromptFor(assistant) },
-        { role: "user", content: userContent },
-      ],
+        { role: "user", content: userContent }
+      ]
     });
 
     const answer = completion?.choices?.[0]?.message?.content?.trim() || "No response from AI.";
@@ -271,7 +270,7 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
-// ---------- Callback page ----------
+// ---------- CALLBACK PAGE ----------
 app.get("/payment/callback", (_req, res) => {
   res.send(`<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -292,7 +291,7 @@ display:flex;align-items:center;justify-content:center;height:100vh}
 </body></html>`);
 });
 
-// ---------- Health & Fallback ----------
+// ---------- HEALTH + FALLBACK ----------
 app.get("/healthz", (_req, res) => res.json({ ok: true }));
 app.get("*", (_req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
