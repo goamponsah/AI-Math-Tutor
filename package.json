@@ -1,43 +1,45 @@
 {
-  "name": "math-gpt",
+  "name": "gpts-help",
   "version": "1.0.0",
-  "description": "Math GPT — AI math tutor with GPT-4, Paystack subscriptions, and step-by-step explanations.",
+  "private": true,
+  "description": "GPTs Help – Math GPT photo-solve and chat AI with Paystack subscriptions, email verification, and Postgres persistence",
   "type": "module",
   "main": "server.js",
   "scripts": {
-    "dev": "node --watch server.js",
-    "start": "prisma migrate deploy && node server.js",
-    "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate deploy",
-    "postinstall": "prisma generate"
+    "start": "node server.js",
+    "dev": "nodemon server.js"
   },
   "dependencies": {
-    "@prisma/client": "^5.18.0",
     "axios": "^1.7.7",
-    "body-parser": "^1.20.3",
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
-    "crypto": "^1.0.1",
-    "express": "^4.19.2",
-    "openai": "^4.56.0"
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "nanoid": "^5.0.7",
+    "nodemailer": "^6.9.13",
+    "openai": "^4.56.0",
+    "pg": "^8.12.0",
+    "form-data": "^4.0.0"
   },
   "devDependencies": {
-    "prisma": "^5.18.0"
+    "nodemon": "^3.1.0"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=18.17.0"
   },
   "keywords": [
-    "math",
-    "gpt",
-    "openai",
-    "express",
-    "prisma",
-    "paystack",
-    "railway",
-    "ai",
-    "education",
-    "subscription"
+    "AI",
+    "GPT",
+    "Paystack",
+    "MathGPT",
+    "PhotoSolve",
+    "EmailVerification",
+    "Postgres",
+    "Tutoring"
   ],
-  "author": "Math GPT Team",
-  "license": "MIT"
+  "license": "MIT",
+  "author": "GPTs Help"
 }
